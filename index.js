@@ -1,6 +1,7 @@
 import axios from "axios";
 import { JSDOM } from "jsdom";
 import { removeStopwords, eng } from "stopword";
+import natural from "natural"; // Importing natural for potential future use
 
 const fetchSeedUrl = async (seedUrl) => {
   const res = await axios.get(seedUrl);
@@ -129,8 +130,11 @@ const fetchSeedUrl = async (seedUrl) => {
     (word) => !webStopwords.includes(word)
   );
 
+  const stemmedWords = finalsetup.map((word) =>
+    natural.PorterStemmer.stem(word)
+  );
   // Final output
-  console.log("Filtered Words:", finalsetup);
+  console.log("Filtered Words:", stemmedWords);
 };
 
 // Example usage
