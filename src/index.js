@@ -1,6 +1,6 @@
 import Express from "express";
 import dotenv from "dotenv";
-import mainRouter from "./src/routers/mainRouter.js";
+import mainRouter from "./routers/mainRouter.js";
 
 const app = Express();
 dotenv.config();
