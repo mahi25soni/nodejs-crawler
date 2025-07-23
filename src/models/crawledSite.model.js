@@ -9,10 +9,10 @@ const crawledSiteSchema = new mongoose.Schema(
       type: String,
     },
     pageTitle: {
-      type: String,
+      type: [String],
     },
     metaDescription: {
-      type: String,
+      type: [String],
     },
     metaKeywords: {
       type: [String],
