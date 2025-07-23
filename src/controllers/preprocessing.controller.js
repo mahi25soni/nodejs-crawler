@@ -3,6 +3,7 @@ import { JSDOM } from "jsdom";
 import { removeStopwords, eng } from "stopword";
 import natural from "natural"; // Importing natural for potential future use
 import { unwantedTags, webStopwords } from "../common/constant.js";
+import normalizeUrl from "normalize-url";
 
 // for h1, h2, h3,
 const arrayOfSentenceToData = (textArray) => {
@@ -22,6 +23,19 @@ const stringToData = (text) => {
   return removeStopwords(words, eng);
 };
 
+const normliseIncomingUrl = (url) => {
+  const normalized = normalizeUrl(url, {
+    stripHash: true, // Removes the URL fragment (#section)
+    removeTrailingSlash: true, // Removes trailing slash (unless root)
+    removeDirectoryIndex: true, // Removes common directory index files (like index.html)
+    sortQueryParameters: true, // Sorts query parameters alphabetically
+    stripWWW: true,
+    normalizeProtocol: true, // Converts 'https://www...' to lowercase 'https://...'
+    defaultProtocol: "https:", // Ensures a protocol is always present (default is 'http:')
+  });
+
+  return normalized;
+};
 export const fetchSiteData = async (req, res) => {
   try {
     const seedUrl = req.body.seedUrl;
@@ -46,10 +60,10 @@ export const fetchSiteData = async (req, res) => {
       }
     });
 
-    // console.log("title ", stringToData(metadata["og:title"]));
-    // console.log("site name ", metadata["og:site_name"].trim().toLowerCase());
-    // console.log("description ", stringToData(metadata.description));
-    // console.log("keywords ", stringToData(metadata.keywords));
+    stringToData(metadata["og:title"]);
+    metadata["og:site_name"].trim().toLowerCase();
+    stringToData(metadata.description);
+    stringToData(metadata.keywords);
 
     //All H1
     const h1Elements = document.querySelectorAll("h1");
@@ -100,11 +114,13 @@ export const fetchSiteData = async (req, res) => {
 
     // Extract outbound links
     const outboundLinks = Array.from(document.querySelectorAll("a"))
-      .map((link) => link.href)
-      .filter((href) => href.startsWith("https://"));
+      .map((link) => normalizeUrl(link.href))
+      .filter(
+        (href) =>
+          href.startsWith("https://") && href.includes("geeksforgeeks.org")
+      );
 
     console.log("total links ", outboundLinks.length);
-    console.log("outbound links ", outboundLinks);
     return res.status(200).json({
       message: "Site data fetched successfully",
       // data: stemmedWords,
