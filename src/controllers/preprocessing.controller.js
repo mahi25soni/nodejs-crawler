@@ -4,6 +4,9 @@ import { removeStopwords, eng } from "stopword";
 import natural from "natural"; // Importing natural for potential future use
 import { unwantedTags, webStopwords } from "../common/constant.js";
 import normalizeUrl from "normalize-url";
+import CrawledSite from "../models/crawledSite.model.js";
+import CorpusWordStat from "../models/corpusWordStat.model.js";
+import InvertedIndex from "../models/invertedIndex.model.js";
 
 // for h1, h2, h3,
 const arrayOfSentenceToData = (textArray) => {
@@ -37,9 +40,16 @@ const normliseIncomingUrl = (url) => {
   return normalized;
 };
 export const fetchSiteData = async (req, res) => {
+  console.time(`Process api:`);
   try {
     const seedUrl = req.body.seedUrl;
-    const response = await axios.get(seedUrl);
+    const normalizedSeedUrl = normliseIncomingUrl(seedUrl);
+
+    // const existingCrawledSite = await CrawledSite.findOne({
+    //   url: normalizedSeedUrl,
+    // });
+
+    const response = await axios.get(normalizedSeedUrl);
     const rawHtmlData = response.data;
 
     const dom = new JSDOM(rawHtmlData);
@@ -59,11 +69,6 @@ export const fetchSiteData = async (req, res) => {
         metadata[name] = content;
       }
     });
-
-    stringToData(metadata["og:title"]);
-    metadata["og:site_name"].trim().toLowerCase();
-    stringToData(metadata.description);
-    stringToData(metadata.keywords);
 
     //All H1
     const h1Elements = document.querySelectorAll("h1");
@@ -120,13 +125,155 @@ export const fetchSiteData = async (req, res) => {
           href.startsWith("https://") && href.includes("geeksforgeeks.org")
       );
 
-    console.log("total links ", outboundLinks.length);
+    const newCrawledSiteData = {
+      url: normalizedSeedUrl,
+      siteName: metadata["og:site_name"].trim().toLowerCase(),
+      pageTitle: stringToData(metadata["og:title"]),
+      metaDescription: stringToData(metadata.description),
+      metaKeywords: stringToData(metadata.keywords),
+      outboundLinks: outboundLinks,
+      htmlHeaders: {
+        h1: h1Data,
+        h2: h2Data,
+        h3: h3Data,
+      },
+      textTokens: stemmedContentWords,
+      isCrawled: true,
+    };
+
+    const nCrawledSite = await CrawledSite.create(newCrawledSiteData);
     return res.status(200).json({
       message: "Site data fetched successfully",
-      // data: stemmedWords,
+      data: nCrawledSite,
     });
   } catch (error) {
     console.error("Error fetching seed URL:", error);
     res.status(500).send("Error fetching seed URL");
+  } finally {
+    console.timeEnd(`Process api:`);
+  }
+};
+
+const handleCorpusWord = (inputData, existingCrawledSite) => {
+  console.time(`Handle Corpus Word:`);
+  try {
+    const wordOccurance = {};
+    inputData?.forEach((word) => {
+      if (wordOccurance[word]) {
+        wordOccurance[word] += 1;
+      } else {
+        wordOccurance[word] = 1;
+      }
+    });
+
+    Object.keys(wordOccurance)?.forEach(async (word) => {
+      const currentCorpusWord = await CorpusWordStat.findOne({
+        word: word,
+      });
+
+      let updatedCorpusWord;
+
+      if (currentCorpusWord) {
+        // If found the word in other site too
+        updatedCorpusWord = await CorpusWordStat.findByIdAndUpdate(
+          currentCorpusWord._id,
+          {
+            $inc: { documentFrequency: 1 },
+          },
+          { new: true }
+        );
+      }
+      // The word is not found in the corpus, so we create a new entry
+      else {
+        updatedCorpusWord = await CorpusWordStat.create({
+          word: word,
+          documentFrequency: 1,
+        });
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error handling corpus word:", error);
+    res.status(500).send("Error handling corpus word");
+  } finally {
+    console.timeEnd(`Handle Corpus Word:`);
+  }
+};
+
+const handleInvertedIndex = (inputData, crawledSite) => {
+  console.time(`Handle Inverted Index:`);
+
+  try {
+    const wordOccurance = {};
+
+    inputData?.forEach((word) => {
+      if (wordOccurance[word]) {
+        wordOccurance[word] += 1;
+      } else {
+        wordOccurance[word] = 1;
+      }
+    });
+
+    inputData.forEach(async (word) => {
+      const currentWord = await InvertedIndex.findOne({
+        word: word,
+      });
+      const newDocEntry = {
+        siteId: crawledSite?._id,
+        termFrequency: wordOccurance[word],
+        totalWordsInDoc: inputData.length,
+      };
+      let updateInvertedWord;
+
+      if (!word) {
+        updateInvertedWord = await InvertedIndex.create({
+          word: word,
+          $push: {
+            documents: newDocEntry,
+          },
+        });
+      }
+      // word exists already,
+      else {
+        const fCrawledSite = await InvertedIndex.findOne({
+          word: word,
+          "documents.siteId": crawledSite._id,
+        });
+
+        // This site isn't there in documents list of this word
+        if (!fCrawledSite) {
+          updateInvertedWord = await InvertedIndex.updateOne(
+            {
+              word: word,
+            },
+            {
+              $push: {
+                documents: newDocEntry,
+              },
+            }
+          );
+        } else {
+          // If same site crawled again, we'll update the numbers
+          updateInvertedWord = await InvertedIndex.updateOne(
+            {
+              word: word,
+              "documents.siteId": crawledSite._id,
+            },
+            {
+              $set: {
+                "documents.$.termFrequency": wordOccurance[word],
+                "documents.$.totalWordsInDoc": totalWords,
+              },
+            }
+          );
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error handling inverted index:", error);
+    res.status(500).send("Error handling inverted index");
+  } finally {
+    console.timeEnd(`Handle Inverted Index:`);
   }
 };

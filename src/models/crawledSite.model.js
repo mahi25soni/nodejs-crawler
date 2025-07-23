@@ -37,9 +37,6 @@ const crawledSiteSchema = new mongoose.Schema(
         },
       ],
     },
-    textContent: {
-      type: String,
-    },
     textTokens: {
       type: [String],
     },
