@@ -142,6 +142,9 @@ export const fetchSiteData = async (req, res) => {
     };
 
     const nCrawledSite = await CrawledSite.create(newCrawledSiteData);
+    // await handleCorpusWord(stemmedContentWords);
+    await handleInvertedIndex(stemmedContentWords, nCrawledSite?._id);
+
     return res.status(200).json({
       message: "Site data fetched successfully",
       data: nCrawledSite,
@@ -154,7 +157,7 @@ export const fetchSiteData = async (req, res) => {
   }
 };
 
-const handleCorpusWord = (inputData, existingCrawledSite) => {
+const handleCorpusWord = async (inputData) => {
   console.time(`Handle Corpus Word:`);
   try {
     const wordOccurance = {};
@@ -195,13 +198,13 @@ const handleCorpusWord = (inputData, existingCrawledSite) => {
     return true;
   } catch (error) {
     console.error("Error handling corpus word:", error);
-    res.status(500).send("Error handling corpus word");
+    throw new error("Error in corpus world");
   } finally {
     console.timeEnd(`Handle Corpus Word:`);
   }
 };
 
-const handleInvertedIndex = (inputData, crawledSite) => {
+const handleInvertedIndex = async (inputData, crawledSiteId) => {
   console.time(`Handle Inverted Index:`);
 
   try {
@@ -215,30 +218,31 @@ const handleInvertedIndex = (inputData, crawledSite) => {
       }
     });
 
-    inputData.forEach(async (word) => {
+    let normalWord = 0;
+
+    Object.keys(wordOccurance).forEach(async (word) => {
+      normalWord++;
       const currentWord = await InvertedIndex.findOne({
         word: word,
       });
       const newDocEntry = {
-        siteId: crawledSite?._id,
+        siteId: crawledSiteId,
         termFrequency: wordOccurance[word],
         totalWordsInDoc: inputData.length,
       };
       let updateInvertedWord;
 
-      if (!word) {
+      if (!currentWord) {
         updateInvertedWord = await InvertedIndex.create({
           word: word,
-          $push: {
-            documents: newDocEntry,
-          },
+          documents: [newDocEntry],
         });
       }
       // word exists already,
       else {
         const fCrawledSite = await InvertedIndex.findOne({
           word: word,
-          "documents.siteId": crawledSite._id,
+          "documents.siteId": crawledSiteId,
         });
 
         // This site isn't there in documents list of this word
@@ -258,7 +262,7 @@ const handleInvertedIndex = (inputData, crawledSite) => {
           updateInvertedWord = await InvertedIndex.updateOne(
             {
               word: word,
-              "documents.siteId": crawledSite._id,
+              "documents.siteId": crawledSiteId,
             },
             {
               $set: {
@@ -270,9 +274,11 @@ const handleInvertedIndex = (inputData, crawledSite) => {
         }
       }
     });
+
+    console.log("normla word count ", normalWord);
   } catch (error) {
     console.error("Error handling inverted index:", error);
-    res.status(500).send("Error handling inverted index");
+    throw new error("Error in inverted index");
   } finally {
     console.timeEnd(`Handle Inverted Index:`);
   }

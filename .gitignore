@@ -1,3 +1,4 @@
 /node_modules
 .datamodel.json
 .env*
+/src/scripts
