@@ -4,6 +4,7 @@ const invertedIndexSchema = new mongoose.Schema(
     word: {
       type: String,
       unique: true,
+      index: true,
     },
     documents: [
       {

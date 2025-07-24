@@ -5,6 +5,7 @@ const corpusWordStatSchema = new mongoose.Schema(
     word: {
       type: String,
       unique: true,
+      index: true,
     },
     documentFrequency: {
       type: Number,
