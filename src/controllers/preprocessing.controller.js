@@ -7,6 +7,8 @@ import normalizeUrl from "normalize-url";
 import CrawledSite from "../models/crawledSite.model.js";
 import CorpusWordStat from "../models/corpusWordStat.model.js";
 import InvertedIndex from "../models/invertedIndex.model.js";
+import globalState from "../libs/globalState.js";
+import { eventEmitter } from "../libs/event.js";
 
 // for h1, h2, h3,
 const arrayOfSentenceToData = (textArray) => {
@@ -40,9 +42,26 @@ const normliseIncomingUrl = (url) => {
   return normalized;
 };
 export const fetchSiteData = async (req, res) => {
-  console.time(`Process api:`);
   try {
     const seedUrl = req.body.seedUrl;
+
+    // const data = await handleCrawledSite(seedUrl);
+    globalState.globalUrlPendingQueue.enqueue(seedUrl);
+    2525;
+
+    eventEmitter.emit("hit-url-pending-queue");
+
+    return res.status(200).json({
+      message: "Events started",
+    });
+  } catch (error) {
+    console.error("Error fetching seed URL:", error);
+    res.status(500).send("Error fetching seed URL");
+  }
+};
+
+export const handleCrawledSite = async (seedUrl) => {
+  try {
     const normalizedSeedUrl = normliseIncomingUrl(seedUrl);
 
     // const existingCrawledSite = await CrawledSite.findOne({
@@ -123,7 +142,8 @@ export const fetchSiteData = async (req, res) => {
       .filter(
         (href) =>
           href.startsWith("https://") && href.includes("geeksforgeeks.org")
-      );
+      )
+      .slice(0, 10);
 
     const newCrawledSiteData = {
       url: normalizedSeedUrl,
@@ -142,22 +162,26 @@ export const fetchSiteData = async (req, res) => {
     };
 
     const nCrawledSite = await CrawledSite.create(newCrawledSiteData);
-    // await handleCorpusWord(stemmedContentWords);
-    await handleInvertedIndex(stemmedContentWords, nCrawledSite?._id);
 
-    return res.status(200).json({
-      message: "Site data fetched successfully",
-      data: nCrawledSite,
+    // pass urls to the globalUrlPendingQueue
+    outboundLinks.forEach((link) => {
+      globalState.globalUrlPendingQueue.push(link);
     });
+
+    globalState.globalSiteCrawled += 1;
+
+    return {
+      success: true,
+      data: nCrawledSite,
+    };
   } catch (error) {
-    console.error("Error fetching seed URL:", error);
-    res.status(500).send("Error fetching seed URL");
+    throw new Error(error);
   } finally {
     console.timeEnd(`Process api:`);
   }
 };
 
-const handleCorpusWord = async (inputData) => {
+export const handleCorpusWord = async (inputData) => {
   console.time(`Handle Corpus Word:`);
   try {
     const wordOccurance = {};
@@ -204,7 +228,7 @@ const handleCorpusWord = async (inputData) => {
   }
 };
 
-const handleInvertedIndex = async (inputData, crawledSiteId) => {
+export const handleInvertedIndex = async (inputData, crawledSiteId) => {
   console.time(`Handle Inverted Index:`);
 
   try {
