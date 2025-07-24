@@ -11,7 +11,7 @@ import globalState from "../libs/globalState.js";
 import { eventEmitter } from "../libs/event.js";
 import pLimit from "p-limit";
 
-const limit = pLimit(10);
+const limit = pLimit(50);
 
 // for h1, h2, h3,
 const arrayOfSentenceToData = (textArray) => {
@@ -209,7 +209,9 @@ export const handleCorpusWord = async (inputData) => {
         limit(async () => {
           const currentCorpusWord = await CorpusWordStat.findOne({
             word: word,
-          });
+          })
+            .select("_id")
+            .lean();
           if (currentCorpusWord) {
             bulkUpdateData.push({
               updateOne: {
@@ -268,7 +270,9 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           normalWord++;
           const currentWord = await InvertedIndex.findOne({
             word: word,
-          });
+          })
+            .select("_id")
+            .lean();
           const newDocEntry = {
             siteId: crawledSiteId,
             termFrequency: wordOccurance[word],
