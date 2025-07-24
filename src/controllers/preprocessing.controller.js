@@ -43,10 +43,8 @@ const normliseIncomingUrl = (url) => {
 };
 export const fetchSiteData = async (req, res) => {
   try {
-    const seedUrl = req.body.seedUrl;
-
-    // const data = await handleCrawledSite(seedUrl);
-    globalState.globalUrlPendingQueue.enqueue(seedUrl);
+    const normalizedSeedUrl = normliseIncomingUrl(req.body.seedUrl);
+    globalState.globalUrlPendingQueue.enqueue(normalizedSeedUrl);
     2525;
 
     eventEmitter.emit("hit-url-pending-queue");
@@ -62,11 +60,19 @@ export const fetchSiteData = async (req, res) => {
 
 export const handleCrawledSite = async (seedUrl) => {
   try {
+    console.time(`Process api:`);
+    console.log("the url is : ", seedUrl);
     const normalizedSeedUrl = normliseIncomingUrl(seedUrl);
 
-    // const existingCrawledSite = await CrawledSite.findOne({
-    //   url: normalizedSeedUrl,
-    // });
+    const existingCrawledSite = await CrawledSite.findOne({
+      url: normalizedSeedUrl,
+    });
+
+    if (existingCrawledSite?.isCrawled) {
+      return {
+        success: false,
+      };
+    }
 
     const response = await axios.get(normalizedSeedUrl);
     const rawHtmlData = response.data;
@@ -147,7 +153,7 @@ export const handleCrawledSite = async (seedUrl) => {
 
     const newCrawledSiteData = {
       url: normalizedSeedUrl,
-      siteName: metadata["og:site_name"].trim().toLowerCase(),
+      siteName: metadata["og:site_name"]?.trim().toLowerCase() | "",
       pageTitle: stringToData(metadata["og:title"]),
       metaDescription: stringToData(metadata.description),
       metaKeywords: stringToData(metadata.keywords),
@@ -172,7 +178,7 @@ export const handleCrawledSite = async (seedUrl) => {
 
     return {
       success: true,
-      data: nCrawledSite,
+      data: nCrawledSite.toObject(),
     };
   } catch (error) {
     throw new Error(error);
@@ -182,7 +188,7 @@ export const handleCrawledSite = async (seedUrl) => {
 };
 
 export const handleCorpusWord = async (inputData) => {
-  console.time(`Handle Corpus Word:`);
+  console.time(`<<<<<<< Handle Corpus Word:`);
   try {
     const wordOccurance = {};
     inputData?.forEach((word) => {
@@ -224,12 +230,12 @@ export const handleCorpusWord = async (inputData) => {
     console.error("Error handling corpus word:", error);
     throw new error("Error in corpus world");
   } finally {
-    console.timeEnd(`Handle Corpus Word:`);
+    console.timeEnd(`<<<<<<< Handle Corpus Word:`);
   }
 };
 
 export const handleInvertedIndex = async (inputData, crawledSiteId) => {
-  console.time(`Handle Inverted Index:`);
+  console.time(`<<<<<<< Handle Inverted Index:`);
 
   try {
     const wordOccurance = {};
@@ -304,6 +310,6 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
     console.error("Error handling inverted index:", error);
     throw new error("Error in inverted index");
   } finally {
-    console.timeEnd(`Handle Inverted Index:`);
+    console.timeEnd(`<<<<<<< Handle Inverted Index:`);
   }
 };
