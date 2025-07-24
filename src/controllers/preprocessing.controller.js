@@ -8,6 +8,7 @@ import CrawledSite from "../models/crawledSite.model.js";
 import CorpusWordStat from "../models/corpusWordStat.model.js";
 import InvertedIndex from "../models/invertedIndex.model.js";
 import globalState from "../libs/globalState.js";
+import temtTime from "../libs/temtTime.js";
 import { eventEmitter } from "../libs/event.js";
 import pLimit from "p-limit";
 
@@ -50,6 +51,7 @@ export const fetchSiteData = async (req, res) => {
     globalState.globalUrlPendingQueue.enqueue(normalizedSeedUrl);
     2525;
 
+    temtTime.apiStartTime = Date.now();
     eventEmitter.emit("hit-url-pending-queue");
 
     return res.status(200).json({

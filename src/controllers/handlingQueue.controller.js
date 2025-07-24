@@ -5,6 +5,7 @@ import {
   handleCrawledSite,
   handleInvertedIndex,
 } from "./preprocessing.controller.js";
+import temtTime from "../libs/temtTime.js";
 
 export const runUrlPendingQueue = async () => {
   try {
@@ -52,7 +53,9 @@ export const runCorpusWordQueue = async () => {
       await handleCorpusWord(front.inputData);
     }
     globalState.setRunCorpusWordQueue = false;
-    console.log(":::: EMPTY CORPUS WORD :::::");
+    temtTime.endingCorpusQueueTime = Date.now();
+
+    console.log(":::: EMPTY CORPUS WORD ::::: ");
   } catch (error) {
     throw new Error(error);
   }
@@ -68,7 +71,10 @@ export const runInvertedIndexQueue = async () => {
       await handleInvertedIndex(front.inputData, front.crawledSiteId);
     }
     globalState.setRunInvertedIndexQueue = false;
-    console.log(":::: EMPTY INVERT QUEUE :::::");
+    // tempTi = Date.now();
+    temtTime.endingIndeQueueTime = Date.now();
+
+    console.log(":::: EMPTY INVERT QUEUE ::::: ");
   } catch (error) {
     throw new Error(error);
   }
