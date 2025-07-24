@@ -201,28 +201,28 @@ export const handleCorpusWord = async (inputData) => {
       }
     });
 
+    let bulkCreateData = [];
+    let bulkUpdateData = [];
+
     await Promise.all(
       Object.keys(wordOccurance)?.map((word) =>
         limit(async () => {
           const currentCorpusWord = await CorpusWordStat.findOne({
             word: word,
           });
-
-          let updatedCorpusWord;
-
           if (currentCorpusWord) {
-            // If found the word in other site too
-            updatedCorpusWord = await CorpusWordStat.findByIdAndUpdate(
-              currentCorpusWord._id,
-              {
-                $inc: { documentFrequency: 1 },
+            bulkUpdateData.push({
+              updateOne: {
+                filter: { _id: currentCorpusWord?._id },
+                update: {
+                  $inc: { documentFrequency: 1 },
+                },
               },
-              { new: true }
-            );
+            });
           }
           // The word is not found in the corpus, so we create a new entry
           else {
-            updatedCorpusWord = await CorpusWordStat.create({
+            bulkCreateData.push({
               word: word,
               documentFrequency: 1,
             });
@@ -230,6 +230,9 @@ export const handleCorpusWord = async (inputData) => {
         })
       )
     );
+
+    await CorpusWordStat.insertMany(bulkCreateData);
+    await CorpusWordStat.bulkWrite(bulkUpdateData);
 
     return true;
   } catch (error) {
@@ -257,6 +260,8 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
     let normalWord = 0;
     console.log("====== Total words are ", Object.keys(wordOccurance).length);
 
+    let bulkCreateData = [];
+
     await Promise.all(
       Object.keys(wordOccurance).map((word) =>
         limit(async () => {
@@ -272,7 +277,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           let updateInvertedWord;
 
           if (!currentWord) {
-            updateInvertedWord = await InvertedIndex.create({
+            bulkCreateData.push({
               word: word,
               documents: [newDocEntry],
             });
@@ -315,6 +320,8 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
         })
       )
     );
+
+    await InvertedIndex.insertMany(bulkCreateData);
 
     return true;
   } catch (error) {
