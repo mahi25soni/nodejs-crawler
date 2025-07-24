@@ -35,6 +35,7 @@ export const runUrlPendingQueue = async () => {
         }
       }
     }
+    console.log(":::: EMPTY URL PENDING :::::");
   } catch (error) {
     throw new Error(error);
   }
@@ -51,6 +52,7 @@ export const runCorpusWordQueue = async () => {
       await handleCorpusWord(front.inputData);
     }
     globalState.setRunCorpusWordQueue = false;
+    console.log(":::: EMPTY CORPUS WORD :::::");
   } catch (error) {
     throw new Error(error);
   }
@@ -66,6 +68,7 @@ export const runInvertedIndexQueue = async () => {
       await handleInvertedIndex(front.inputData, front.crawledSiteId);
     }
     globalState.setRunInvertedIndexQueue = false;
+    console.log(":::: EMPTY INVERT QUEUE :::::");
   } catch (error) {
     throw new Error(error);
   }

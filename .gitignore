@@ -2,3 +2,4 @@
 .datamodel.json
 .env*
 /src/scripts
+.clinic

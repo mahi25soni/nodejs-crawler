@@ -9,6 +9,9 @@ import CorpusWordStat from "../models/corpusWordStat.model.js";
 import InvertedIndex from "../models/invertedIndex.model.js";
 import globalState from "../libs/globalState.js";
 import { eventEmitter } from "../libs/event.js";
+import pLimit from "p-limit";
+
+const limit = pLimit(10);
 
 // for h1, h2, h3,
 const arrayOfSentenceToData = (textArray) => {
@@ -60,8 +63,7 @@ export const fetchSiteData = async (req, res) => {
 
 export const handleCrawledSite = async (seedUrl) => {
   try {
-    console.time(`Process api:`);
-    console.log("the url is : ", seedUrl);
+    console.time(`<<<<<< Process api:`);
     const normalizedSeedUrl = normliseIncomingUrl(seedUrl);
 
     const existingCrawledSite = await CrawledSite.findOne({
@@ -183,7 +185,7 @@ export const handleCrawledSite = async (seedUrl) => {
   } catch (error) {
     throw new Error(error);
   } finally {
-    console.timeEnd(`Process api:`);
+    console.timeEnd(`<<<<<< Process api:`);
   }
 };
 
@@ -199,31 +201,35 @@ export const handleCorpusWord = async (inputData) => {
       }
     });
 
-    Object.keys(wordOccurance)?.forEach(async (word) => {
-      const currentCorpusWord = await CorpusWordStat.findOne({
-        word: word,
-      });
+    await Promise.all(
+      Object.keys(wordOccurance)?.map((word) =>
+        limit(async () => {
+          const currentCorpusWord = await CorpusWordStat.findOne({
+            word: word,
+          });
 
-      let updatedCorpusWord;
+          let updatedCorpusWord;
 
-      if (currentCorpusWord) {
-        // If found the word in other site too
-        updatedCorpusWord = await CorpusWordStat.findByIdAndUpdate(
-          currentCorpusWord._id,
-          {
-            $inc: { documentFrequency: 1 },
-          },
-          { new: true }
-        );
-      }
-      // The word is not found in the corpus, so we create a new entry
-      else {
-        updatedCorpusWord = await CorpusWordStat.create({
-          word: word,
-          documentFrequency: 1,
-        });
-      }
-    });
+          if (currentCorpusWord) {
+            // If found the word in other site too
+            updatedCorpusWord = await CorpusWordStat.findByIdAndUpdate(
+              currentCorpusWord._id,
+              {
+                $inc: { documentFrequency: 1 },
+              },
+              { new: true }
+            );
+          }
+          // The word is not found in the corpus, so we create a new entry
+          else {
+            updatedCorpusWord = await CorpusWordStat.create({
+              word: word,
+              documentFrequency: 1,
+            });
+          }
+        })
+      )
+    );
 
     return true;
   } catch (error) {
@@ -249,63 +255,68 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
     });
 
     let normalWord = 0;
+    console.log("====== Total words are ", Object.keys(wordOccurance).length);
 
-    Object.keys(wordOccurance).forEach(async (word) => {
-      normalWord++;
-      const currentWord = await InvertedIndex.findOne({
-        word: word,
-      });
-      const newDocEntry = {
-        siteId: crawledSiteId,
-        termFrequency: wordOccurance[word],
-        totalWordsInDoc: inputData.length,
-      };
-      let updateInvertedWord;
+    await Promise.all(
+      Object.keys(wordOccurance).map((word) =>
+        limit(async () => {
+          normalWord++;
+          const currentWord = await InvertedIndex.findOne({
+            word: word,
+          });
+          const newDocEntry = {
+            siteId: crawledSiteId,
+            termFrequency: wordOccurance[word],
+            totalWordsInDoc: inputData.length,
+          };
+          let updateInvertedWord;
 
-      if (!currentWord) {
-        updateInvertedWord = await InvertedIndex.create({
-          word: word,
-          documents: [newDocEntry],
-        });
-      }
-      // word exists already,
-      else {
-        const fCrawledSite = await InvertedIndex.findOne({
-          word: word,
-          "documents.siteId": crawledSiteId,
-        });
-
-        // This site isn't there in documents list of this word
-        if (!fCrawledSite) {
-          updateInvertedWord = await InvertedIndex.updateOne(
-            {
+          if (!currentWord) {
+            updateInvertedWord = await InvertedIndex.create({
               word: word,
-            },
-            {
-              $push: {
-                documents: newDocEntry,
-              },
-            }
-          );
-        } else {
-          // If same site crawled again, we'll update the numbers
-          updateInvertedWord = await InvertedIndex.updateOne(
-            {
+              documents: [newDocEntry],
+            });
+          }
+          // word exists already,
+          else {
+            const fCrawledSite = await InvertedIndex.findOne({
               word: word,
               "documents.siteId": crawledSiteId,
-            },
-            {
-              $set: {
-                "documents.$.termFrequency": wordOccurance[word],
-                "documents.$.totalWordsInDoc": totalWords,
-              },
-            }
-          );
-        }
-      }
-    });
+            });
 
-    console.log("normla word count ", normalWord);
+            // This site isn't there in documents list of this word
+            if (!fCrawledSite) {
+              updateInvertedWord = await InvertedIndex.updateOne(
+                {
+                  word: word,
+                },
+                {
+                  $push: {
+                    documents: newDocEntry,
+                  },
+                }
+              );
+            } else {
+              // If same site crawled again, we'll update the numbers
+              updateInvertedWord = await InvertedIndex.updateOne(
+                {
+                  word: word,
+                  "documents.siteId": crawledSiteId,
+                },
+                {
+                  $set: {
+                    "documents.$.termFrequency": wordOccurance[word],
+                    "documents.$.totalWordsInDoc": totalWords,
+                  },
+                }
+              );
+            }
+          }
+        })
+      )
+    );
+
+    return true;
   } catch (error) {
     console.error("Error handling inverted index:", error);
     throw new error("Error in inverted index");

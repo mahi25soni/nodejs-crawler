@@ -23,6 +23,7 @@
     "node-html-parser": "^7.0.1",
     "nodemon": "^3.1.10",
     "normalize-url": "^8.0.2",
+    "p-limit": "^6.2.0",
     "stopword": "^3.1.5"
   }
 }
