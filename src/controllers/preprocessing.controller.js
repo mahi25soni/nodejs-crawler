@@ -215,40 +215,42 @@ export const handleCorpusWord = async (inputData) => {
       .select("_id word")
       .lean();
 
-    await Promise.all(
-      Object.keys(wordOccurance)?.map((word) =>
-        limit(async () => {
-          const currentCorpusWord = entireWordList.find(
-            (element) => element?.word.trim() === word.trim()
-          );
-          if (currentCorpusWord) {
-            bulkUpdateData.push({
-              updateOne: {
-                filter: { _id: currentCorpusWord?._id },
-                update: {
-                  $inc: { documentFrequency: 1 },
-                },
-              },
-            });
-          }
-          // The word is not found in the corpus, so we create a new entry
-          else {
-            bulkCreateData.push({
-              word: word,
-              documentFrequency: 1,
-            });
-          }
-        })
-      )
-    );
+    Object.keys(wordOccurance)?.forEach((word) => {
+      const currentCorpusWord = entireWordList.find(
+        (element) => element?.word.trim() === word.trim()
+      );
+      if (currentCorpusWord) {
+        bulkUpdateData.push({
+          updateOne: {
+            filter: { _id: currentCorpusWord?._id },
+            update: {
+              $inc: { documentFrequency: 1 },
+            },
+          },
+        });
+      }
+      // The word is not found in the corpus, so we create a new entry
+      else {
+        bulkCreateData.push({
+          word: word,
+          documentFrequency: 1,
+        });
+      }
+    });
 
-    await CorpusWordStat.insertMany(bulkCreateData);
-    await CorpusWordStat.bulkWrite(bulkUpdateData);
+    const tasks = [];
+    if (bulkCreateData.length > 0)
+      tasks.push(CorpusWordStat.insertMany(bulkCreateData));
+
+    if (bulkUpdateData.length > 0)
+      tasks.push(CorpusWordStat.bulkWrite(bulkUpdateData));
+
+    await Promise.all(tasks);
 
     return true;
   } catch (error) {
     console.error("Error handling corpus word:", error);
-    throw new error("Error in corpus world");
+    throw new Error("Error in corpus world");
   } finally {
     console.log("===== WORDS TAKEN IN CORPUS API : ", mapSize);
     console.timeEnd(`<<<<<<< Handle Corpus Word:`);
@@ -273,6 +275,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
     mapSize = Object.keys(wordOccurance).length;
 
     let bulkCreateData = [];
+    let bulkUpdateData = [];
 
     const entireWordList = await InvertedIndex.find({
       word: { $in: Object.keys(wordOccurance) },
@@ -280,69 +283,65 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
       .select("_id word document.siteId")
       .lean();
 
-    await Promise.all(
-      Object.keys(wordOccurance).map((word) =>
-        limit(async () => {
-          const currentWord = entireWordList.find(
-            (element) => element.word.trim() === word.trim()
-          );
-          const newDocEntry = {
-            siteId: crawledSiteId,
-            termFrequency: wordOccurance[word],
-            totalWordsInDoc: inputData.length,
-          };
-          let updateInvertedWord;
+    Object.keys(wordOccurance).forEach((word) => {
+      const currentWord = entireWordList.find(
+        (element) => element.word.trim() === word.trim()
+      );
+      const newDocEntry = {
+        siteId: crawledSiteId,
+        termFrequency: wordOccurance[word],
+        totalWordsInDoc: inputData.length,
+      };
 
-          if (!currentWord) {
-            bulkCreateData.push({
-              word: word,
-              documents: [newDocEntry],
-            });
-          }
-          // word exists already,
-          else {
-            const fCrawledSite = currentWord?.documents?.some(
-              (element) =>
-                element.siteId.toString() === crawledSiteId.toString()
-            );
-            // This site isn't there in documents list of this word
-            if (!fCrawledSite) {
-              updateInvertedWord = await InvertedIndex.updateOne(
-                {
-                  word: word,
+      if (!currentWord) {
+        bulkCreateData.push({
+          word: word,
+          documents: [newDocEntry],
+        });
+      }
+      // word exists already,
+      else {
+        const fCrawledSite = currentWord?.documents?.some(
+          (element) => element.siteId.toString() === crawledSiteId.toString()
+        );
+        // This site isn't there in documents list of this word
+        if (!fCrawledSite) {
+          bulkUpdateData.push({
+            updateOne: {
+              filter: { word },
+              update: { $push: { document: newDocEntry } },
+            },
+          });
+        } else {
+          // If same site crawled again, we'll update the numbers
+          bulkUpdateData.push({
+            updateOne: {
+              filter: { word, "documents.siteId": crawledSiteId },
+              update: {
+                $set: {
+                  "documents.$.termFrequency": wordOccurance[word],
+                  "documents.$.totalWordsInDoc": inputData.length,
                 },
-                {
-                  $push: {
-                    documents: newDocEntry,
-                  },
-                }
-              );
-            } else {
-              // If same site crawled again, we'll update the numbers
-              updateInvertedWord = await InvertedIndex.updateOne(
-                {
-                  word: word,
-                  "documents.siteId": crawledSiteId,
-                },
-                {
-                  $set: {
-                    "documents.$.termFrequency": wordOccurance[word],
-                    "documents.$.totalWordsInDoc": totalWords,
-                  },
-                }
-              );
-            }
-          }
-        })
-      )
-    );
+              },
+            },
+          });
+        }
+      }
+    });
 
-    await InvertedIndex.insertMany(bulkCreateData);
+    const tasks = [];
+    if (bulkCreateData.length > 0)
+      tasks.push(InvertedIndex.insertMany(bulkCreateData));
+
+    if (bulkUpdateData.length > 0)
+      tasks.push(InvertedIndex.bulkWrite(bulkUpdateData));
+
+    await Promise.all(tasks);
 
     return true;
   } catch (error) {
     console.error("Error handling inverted index:", error);
-    throw new error("Error in inverted index");
+    throw new Error("Error in inverted index");
   } finally {
     console.log("===== WORDS TAKEN IN INVERTED API : ", mapSize);
     console.timeEnd(`<<<<<<< Handle Inverted Index:`);
