@@ -209,14 +209,18 @@ export const handleCorpusWord = async (inputData) => {
     let bulkUpdateData = [];
     mapSize = Object.keys(wordOccurance).length;
 
+    const entireWordList = await CorpusWordStat.find({
+      word: { $in: Object.keys(wordOccurance) },
+    })
+      .select("_id word")
+      .lean();
+
     await Promise.all(
       Object.keys(wordOccurance)?.map((word) =>
         limit(async () => {
-          const currentCorpusWord = await CorpusWordStat.findOne({
-            word: word,
-          })
-            .select("_id")
-            .lean();
+          const currentCorpusWord = entireWordList.find(
+            (element) => element?.word.trim() === word.trim()
+          );
           if (currentCorpusWord) {
             bulkUpdateData.push({
               updateOne: {
@@ -270,14 +274,18 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
 
     let bulkCreateData = [];
 
+    const entireWordList = await InvertedIndex.find({
+      word: { $in: Object.keys(wordOccurance) },
+    })
+      .select("_id word document.siteId")
+      .lean();
+
     await Promise.all(
       Object.keys(wordOccurance).map((word) =>
         limit(async () => {
-          const currentWord = await InvertedIndex.findOne({
-            word: word,
-          })
-            .select("_id")
-            .lean();
+          const currentWord = entireWordList.find(
+            (element) => element.word.trim() === word.trim()
+          );
           const newDocEntry = {
             siteId: crawledSiteId,
             termFrequency: wordOccurance[word],
@@ -293,11 +301,10 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           }
           // word exists already,
           else {
-            const fCrawledSite = await InvertedIndex.findOne({
-              word: word,
-              "documents.siteId": crawledSiteId,
-            });
-
+            const fCrawledSite = currentWord?.documents?.some(
+              (element) =>
+                element.siteId.toString() === crawledSiteId.toString()
+            );
             // This site isn't there in documents list of this word
             if (!fCrawledSite) {
               updateInvertedWord = await InvertedIndex.updateOne(

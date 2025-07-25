@@ -22,6 +22,11 @@ eventEmitter.on("hit-url-pending-queue", () => {
 
 let corpusWorkerRunning = false;
 eventEmitter.on("hit-corpus-word-queue", () => {
+  console.log(
+    "Current size of corpus queue ",
+    globalState.corpusWordQueue.size()
+  );
+
   if (corpusWorkerRunning) {
     console.log("Corpus worker already running, skipping...");
     return;
@@ -51,6 +56,7 @@ eventEmitter.on("hit-corpus-word-queue", () => {
         corpusWorker.postMessage(nextItem);
       } else {
         // Optionally wait until next event
+        corpusWorkerRunning = false;
       }
     }
   });
@@ -68,6 +74,10 @@ eventEmitter.on("hit-corpus-word-queue", () => {
 
 let invertedWorkerRunning = false;
 eventEmitter.on("hit-inverted-index-queue", () => {
+  console.log(
+    "Current size of inverted queue ",
+    globalState.invertedIndexQueue.size()
+  );
   if (invertedWorkerRunning) {
     console.log("Inverted index worker already running, skipping...");
     return;
@@ -94,6 +104,8 @@ eventEmitter.on("hit-inverted-index-queue", () => {
       const nextItem = globalState.invertedIndexQueue.pop();
       if (nextItem) {
         invertedWorker.postMessage(nextItem);
+      } else {
+        invertedWorkerRunning = false;
       }
     }
   });
