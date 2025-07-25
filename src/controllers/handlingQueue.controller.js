@@ -29,7 +29,7 @@ export const runUrlPendingQueue = async () => {
 
         globalState.invertedIndexQueue.push({
           inputData: data?.data?.textTokens,
-          crawledSiteId: data?.data?._id.toString(),
+          crawledSiteId: data?.data?._id,
         });
         if (!globalState.setRunInvertedIndexQueue) {
           eventEmitter.emit("hit-inverted-index-queue");
@@ -42,27 +42,38 @@ export const runUrlPendingQueue = async () => {
   }
 };
 
-export const runCorpusWordQueue = async (front) => {
+export const runCorpusWordQueue = async () => {
   try {
     console.log("queue function runCorpusWordQueue started");
 
-    await handleCorpusWord(front.inputData);
+    while (!globalState.corpusWordQueue.isEmpty()) {
+      console.log("-------------- iteration inside runCorpusWordQueue");
 
+      const front = globalState.corpusWordQueue.pop();
+      await handleCorpusWord(front.inputData);
+    }
+    globalState.setRunCorpusWordQueue = false;
     temtTime.endingCorpusQueueTime = Date.now();
 
-    console.log("<<<< FINISHED RUNNING CORPUS");
+    console.log(":::: EMPTY CORPUS WORD ::::: ");
   } catch (error) {
     throw new Error(error);
   }
 };
 
-export const runInvertedIndexQueue = async (front) => {
+export const runInvertedIndexQueue = async () => {
   try {
     console.log("queue function runInvertedIndexQueue started");
-    await handleInvertedIndex(front.inputData, front.crawledSiteId);
 
+    while (!globalState.invertedIndexQueue.isEmpty()) {
+      console.log("-------------- iteration inside runInvertedIndexQueue");
+      const front = globalState.invertedIndexQueue.pop();
+      await handleInvertedIndex(front.inputData, front.crawledSiteId);
+    }
+    globalState.setRunInvertedIndexQueue = false;
     temtTime.endingIndeQueueTime = Date.now();
-    console.log("<<<< FINISHED RUNNING INVERTED INDEX");
+
+    console.log(":::: EMPTY INVERT QUEUE ::::: ");
   } catch (error) {
     throw new Error(error);
   }
