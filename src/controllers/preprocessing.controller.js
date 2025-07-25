@@ -194,7 +194,6 @@ export const handleCrawledSite = async (seedUrl) => {
 
 export const handleCorpusWord = async (inputData) => {
   console.time(`<<<<<<< Handle Corpus Word:`);
-  let mapSize = 0;
   try {
     const wordOccurance = {};
     inputData?.forEach((word) => {
@@ -207,7 +206,6 @@ export const handleCorpusWord = async (inputData) => {
 
     let bulkCreateData = [];
     let bulkUpdateData = [];
-    mapSize = Object.keys(wordOccurance).length;
 
     const entireWordList = await CorpusWordStat.find({
       word: { $in: Object.keys(wordOccurance) },
@@ -252,14 +250,12 @@ export const handleCorpusWord = async (inputData) => {
     console.error("Error handling corpus word:", error);
     throw new Error("Error in corpus world");
   } finally {
-    console.log("===== WORDS TAKEN IN CORPUS API : ", mapSize);
-    console.timeEnd(`<<<<<<< Handle Corpus Word:`);
+    // console.timeEnd(`<<<<<<< Handle Corpus Word:`);
   }
 };
 
 export const handleInvertedIndex = async (inputData, crawledSiteId) => {
   console.time(`<<<<<<< Handle Inverted Index:`);
-  let mapSize;
 
   try {
     const wordOccurance = {};
@@ -271,8 +267,6 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
         wordOccurance[word] = 1;
       }
     });
-
-    mapSize = Object.keys(wordOccurance).length;
 
     let bulkCreateData = [];
     let bulkUpdateData = [];
@@ -343,7 +337,6 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
     console.error("Error handling inverted index:", error);
     throw new Error("Error in inverted index");
   } finally {
-    console.log("===== WORDS TAKEN IN INVERTED API : ", mapSize);
-    console.timeEnd(`<<<<<<< Handle Inverted Index:`);
+    // console.timeEnd(`<<<<<<< Handle Inverted Index:`);
   }
 };

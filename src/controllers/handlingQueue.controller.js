@@ -9,12 +9,10 @@ import temtTime from "../libs/temtTime.js";
 
 export const runUrlPendingQueue = async () => {
   try {
-    console.log("queue function runUrlPendingQueue started");
     while (
       !globalState.globalUrlPendingQueue.isEmpty() &&
       globalState.globalSiteCrawled <= 5
     ) {
-      console.log("iteration inside runUrlPendingQueue");
       const front = globalState.globalUrlPendingQueue.pop(); // removes the first element
 
       const data = await handleCrawledSite(front);
@@ -36,7 +34,6 @@ export const runUrlPendingQueue = async () => {
         }
       }
     }
-    console.log(":::: EMPTY URL PENDING :::::");
   } catch (error) {
     throw new Error(error);
   }
@@ -44,18 +41,12 @@ export const runUrlPendingQueue = async () => {
 
 export const runCorpusWordQueue = async () => {
   try {
-    console.log("queue function runCorpusWordQueue started");
-
     while (!globalState.corpusWordQueue.isEmpty()) {
-      console.log("-------------- iteration inside runCorpusWordQueue");
-
       const front = globalState.corpusWordQueue.pop();
       await handleCorpusWord(front.inputData);
     }
     globalState.setRunCorpusWordQueue = false;
     temtTime.endingCorpusQueueTime = Date.now();
-
-    console.log(":::: EMPTY CORPUS WORD ::::: ");
   } catch (error) {
     throw new Error(error);
   }
@@ -63,17 +54,12 @@ export const runCorpusWordQueue = async () => {
 
 export const runInvertedIndexQueue = async () => {
   try {
-    console.log("queue function runInvertedIndexQueue started");
-
     while (!globalState.invertedIndexQueue.isEmpty()) {
-      console.log("-------------- iteration inside runInvertedIndexQueue");
       const front = globalState.invertedIndexQueue.pop();
       await handleInvertedIndex(front.inputData, front.crawledSiteId);
     }
     globalState.setRunInvertedIndexQueue = false;
     temtTime.endingIndeQueueTime = Date.now();
-
-    console.log(":::: EMPTY INVERT QUEUE ::::: ");
   } catch (error) {
     throw new Error(error);
   }
