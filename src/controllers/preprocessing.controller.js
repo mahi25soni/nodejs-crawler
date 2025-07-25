@@ -185,6 +185,7 @@ export const handleCrawledSite = async (seedUrl) => {
       data: nCrawledSite.toObject(),
     };
   } catch (error) {
+    console.log("Error in handleCrawled :", error);
     throw new Error(error);
   } finally {
     console.timeEnd(`<<<<<< Process api:`);
@@ -193,6 +194,7 @@ export const handleCrawledSite = async (seedUrl) => {
 
 export const handleCorpusWord = async (inputData) => {
   console.time(`<<<<<<< Handle Corpus Word:`);
+  let mapSize = 0;
   try {
     const wordOccurance = {};
     inputData?.forEach((word) => {
@@ -205,6 +207,7 @@ export const handleCorpusWord = async (inputData) => {
 
     let bulkCreateData = [];
     let bulkUpdateData = [];
+    mapSize = Object.keys(wordOccurance).length;
 
     await Promise.all(
       Object.keys(wordOccurance)?.map((word) =>
@@ -243,12 +246,14 @@ export const handleCorpusWord = async (inputData) => {
     console.error("Error handling corpus word:", error);
     throw new error("Error in corpus world");
   } finally {
+    console.log("===== WORDS TAKEN IN CORPUS API : ", mapSize);
     console.timeEnd(`<<<<<<< Handle Corpus Word:`);
   }
 };
 
 export const handleInvertedIndex = async (inputData, crawledSiteId) => {
   console.time(`<<<<<<< Handle Inverted Index:`);
+  let mapSize;
 
   try {
     const wordOccurance = {};
@@ -261,15 +266,13 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
       }
     });
 
-    let normalWord = 0;
-    console.log("====== Total words are ", Object.keys(wordOccurance).length);
+    mapSize = Object.keys(wordOccurance).length;
 
     let bulkCreateData = [];
 
     await Promise.all(
       Object.keys(wordOccurance).map((word) =>
         limit(async () => {
-          normalWord++;
           const currentWord = await InvertedIndex.findOne({
             word: word,
           })
@@ -334,6 +337,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
     console.error("Error handling inverted index:", error);
     throw new error("Error in inverted index");
   } finally {
+    console.log("===== WORDS TAKEN IN INVERTED API : ", mapSize);
     console.timeEnd(`<<<<<<< Handle Inverted Index:`);
   }
 };
