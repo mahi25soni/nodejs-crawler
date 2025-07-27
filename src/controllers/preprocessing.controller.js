@@ -309,7 +309,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           bulkUpdateData.push({
             updateOne: {
               filter: { word },
-              update: { $push: { document: newDocEntry } },
+              update: { $push: { documents: newDocEntry } },
             },
           });
         } else {
