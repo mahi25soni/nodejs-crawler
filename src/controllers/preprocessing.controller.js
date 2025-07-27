@@ -16,6 +16,9 @@ const limit = pLimit(50);
 
 // for h1, h2, h3,
 const arrayOfSentenceToData = (textArray) => {
+  if (textArray?.length < 1) {
+    return [];
+  }
   const withStopWords = Array.from(textArray)
     .map((el) => el.textContent.trim().toLowerCase().split(" "))
     .flat()
@@ -24,6 +27,9 @@ const arrayOfSentenceToData = (textArray) => {
 };
 
 const stringToData = (text) => {
+  if (text === undefined || text === null) {
+    return [];
+  }
   const words = text
     .trim()
     .toLowerCase()
@@ -65,8 +71,11 @@ export const fetchSiteData = async (req, res) => {
 
 export const handleCrawledSite = async (seedUrl) => {
   try {
-    console.time(`<<<<<< Process api:`);
+    // console.time(`<<<<<< Process api:`);
     const normalizedSeedUrl = normliseIncomingUrl(seedUrl);
+
+    console.log("=== Current site is : ", normalizedSeedUrl);
+    console.log("--------URL COUNT IS : ", globalState.globalSiteCrawled);
 
     const existingCrawledSite = await CrawledSite.findOne({
       url: normalizedSeedUrl,
@@ -79,6 +88,7 @@ export const handleCrawledSite = async (seedUrl) => {
     }
 
     const response = await axios.get(normalizedSeedUrl);
+
     const rawHtmlData = response.data;
 
     const dom = new JSDOM(rawHtmlData);
@@ -146,14 +156,11 @@ export const handleCrawledSite = async (seedUrl) => {
       natural.PorterStemmer.stem(word)
     );
 
-    // Extract outbound links
     const outboundLinks = Array.from(document.querySelectorAll("a"))
-      .map((link) => normalizeUrl(link.href))
-      .filter(
-        (href) =>
-          href.startsWith("https://") && href.includes("geeksforgeeks.org")
-      )
-      .slice(0, 10);
+      .map((link) => link.getAttribute("href") || "")
+      .filter((href) => href.startsWith("https")) // only absolute URLs
+      .map((href) => normalizeUrl(href))
+      .filter((href) => href && href.includes("geeksforgeeks.org"));
 
     const newCrawledSiteData = {
       url: normalizedSeedUrl,
@@ -188,14 +195,14 @@ export const handleCrawledSite = async (seedUrl) => {
     console.log("Error in handleCrawled :", error);
     throw new Error(error);
   } finally {
-    console.timeEnd(`<<<<<< Process api:`);
+    // console.timeEnd(`<<<<<< Process api:`);
   }
 };
 
 export const handleCorpusWord = async (inputData) => {
-  console.time(`<<<<<<< Handle Corpus Word:`);
+  // console.time(`<<<<<<< Handle Corpus Word:`);
   try {
-    const wordOccurance = {};
+    const wordOccurance = Object.create(null);
     inputData?.forEach((word) => {
       if (wordOccurance[word]) {
         wordOccurance[word] += 1;
@@ -255,11 +262,10 @@ export const handleCorpusWord = async (inputData) => {
 };
 
 export const handleInvertedIndex = async (inputData, crawledSiteId) => {
-  console.time(`<<<<<<< Handle Inverted Index:`);
+  // console.time(`<<<<<<< Handle Inverted Index:`);
 
   try {
-    const wordOccurance = {};
-
+    const wordOccurance = Object.create(null);
     inputData?.forEach((word) => {
       if (wordOccurance[word]) {
         wordOccurance[word] += 1;
@@ -282,7 +288,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
         (element) => element.word.trim() === word.trim()
       );
       const newDocEntry = {
-        siteId: crawledSiteId,
+        siteId: crawledSiteId.toString(),
         termFrequency: wordOccurance[word],
         totalWordsInDoc: inputData.length,
       };
@@ -310,7 +316,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           // If same site crawled again, we'll update the numbers
           bulkUpdateData.push({
             updateOne: {
-              filter: { word, "documents.siteId": crawledSiteId },
+              filter: { word, "documents.siteId": crawledSiteId.toString() },
               update: {
                 $set: {
                   "documents.$.termFrequency": wordOccurance[word],

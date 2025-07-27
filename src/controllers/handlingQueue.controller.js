@@ -11,12 +11,11 @@ export const runUrlPendingQueue = async () => {
   try {
     while (
       !globalState.globalUrlPendingQueue.isEmpty() &&
-      globalState.globalSiteCrawled <= 5
+      globalState.globalSiteCrawled <= 50
     ) {
       const front = globalState.globalUrlPendingQueue.pop(); // removes the first element
 
       const data = await handleCrawledSite(front);
-
       if (data.success) {
         globalState.corpusWordQueue.push({
           inputData: data?.data?.textTokens,
