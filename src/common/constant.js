@@ -75,3 +75,12 @@ export const webStopwords = [
   "zip",
   "code",
 ];
+
+export const tokenType = [
+  "BASIC_TOKEN",
+  "PAGETITLE",
+  "KEYWORD",
+  "HONE",
+  "HTWO",
+  "HTHREE",
+];

@@ -17,17 +17,66 @@ export const runUrlPendingQueue = async () => {
 
       const data = await handleCrawledSite(front);
       if (data.success) {
-        globalState.corpusWordQueue.push({
-          inputData: data?.data?.textTokens,
-        });
+        globalState.corpusWordQueue
+          .push({
+            inputData: data?.data?.textTokens,
+            type: "BASIC_TOKEN",
+          })
+          .push({
+            inputData: data?.data?.pageTitle,
+            type: "PAGETITLE",
+          })
+          .push({
+            inputData: data?.data?.metaKeywords,
+            type: "KEYWORD",
+          })
+          .push({
+            inputData: data?.data?.htmlHeaders?.h1,
+            type: "HONE",
+          })
+          .push({
+            inputData: data?.data?.htmlHeaders?.h2,
+            type: "HTWO",
+          })
+          .push({
+            inputData: data?.data?.htmlHeaders?.h3,
+            type: "HTHREE",
+          });
         if (!globalState.setRunCorpusWordQueue) {
           eventEmitter.emit("hit-corpus-word-queue");
         }
 
-        globalState.invertedIndexQueue.push({
-          inputData: data?.data?.textTokens,
-          crawledSiteId: data?.data?._id,
-        });
+        globalState.invertedIndexQueue
+          .push({
+            inputData: data?.data?.textTokens,
+            crawledSiteId: data?.data?._id,
+            type: "BASIC_TOKEN",
+          })
+          .push({
+            inputData: data?.data?.textTokens,
+            crawledSiteId: data?.data?._id,
+            type: "PAGETITLE",
+          })
+          .push({
+            inputData: data?.data?.textTokens,
+            crawledSiteId: data?.data?._id,
+            type: "KEYWORD",
+          })
+          .push({
+            inputData: data?.data?.textTokens,
+            crawledSiteId: data?.data?._id,
+            type: "HONE",
+          })
+          .push({
+            inputData: data?.data?.textTokens,
+            crawledSiteId: data?.data?._id,
+            type: "HTWO",
+          })
+          .push({
+            inputData: data?.data?.textTokens,
+            crawledSiteId: data?.data?._id,
+            type: "HTHREE",
+          });
         if (!globalState.setRunInvertedIndexQueue) {
           eventEmitter.emit("hit-inverted-index-queue");
         }
@@ -42,7 +91,7 @@ export const runCorpusWordQueue = async () => {
   try {
     while (!globalState.corpusWordQueue.isEmpty()) {
       const front = globalState.corpusWordQueue.pop();
-      await handleCorpusWord(front.inputData);
+      await handleCorpusWord(front.inputData, front.type);
     }
     globalState.setRunCorpusWordQueue = false;
     temtTime.endingCorpusQueueTime = Date.now();
@@ -55,7 +104,11 @@ export const runInvertedIndexQueue = async () => {
   try {
     while (!globalState.invertedIndexQueue.isEmpty()) {
       const front = globalState.invertedIndexQueue.pop();
-      await handleInvertedIndex(front.inputData, front.crawledSiteId);
+      await handleInvertedIndex(
+        front.inputData,
+        front.crawledSiteId,
+        front.type
+      );
     }
     globalState.setRunInvertedIndexQueue = false;
     temtTime.endingIndeQueueTime = Date.now();

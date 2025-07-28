@@ -199,7 +199,7 @@ export const handleCrawledSite = async (seedUrl) => {
   }
 };
 
-export const handleCorpusWord = async (inputData) => {
+export const handleCorpusWord = async (inputData, type) => {
   // console.time(`<<<<<<< Handle Corpus Word:`);
   try {
     const wordOccurance = Object.create(null);
@@ -216,6 +216,7 @@ export const handleCorpusWord = async (inputData) => {
 
     const entireWordList = await CorpusWordStat.find({
       word: { $in: Object.keys(wordOccurance) },
+      wordType: type,
     })
       .select("_id word")
       .lean();
@@ -238,6 +239,7 @@ export const handleCorpusWord = async (inputData) => {
       else {
         bulkCreateData.push({
           word: word,
+          wordType: type,
           documentFrequency: 1,
         });
       }
@@ -261,7 +263,7 @@ export const handleCorpusWord = async (inputData) => {
   }
 };
 
-export const handleInvertedIndex = async (inputData, crawledSiteId) => {
+export const handleInvertedIndex = async (inputData, crawledSiteId, type) => {
   // console.time(`<<<<<<< Handle Inverted Index:`);
 
   try {
@@ -279,6 +281,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
 
     const entireWordList = await InvertedIndex.find({
       word: { $in: Object.keys(wordOccurance) },
+      wordType: type,
     })
       .select("_id word document.siteId")
       .lean();
@@ -296,6 +299,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
       if (!currentWord) {
         bulkCreateData.push({
           word: word,
+          wordType: type,
           documents: [newDocEntry],
         });
       }
@@ -308,7 +312,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
         if (!fCrawledSite) {
           bulkUpdateData.push({
             updateOne: {
-              filter: { word },
+              filter: { word, wordType: type },
               update: { $push: { documents: newDocEntry } },
             },
           });
@@ -316,7 +320,11 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           // If same site crawled again, we'll update the numbers
           bulkUpdateData.push({
             updateOne: {
-              filter: { word, "documents.siteId": crawledSiteId.toString() },
+              filter: {
+                word,
+                wordType: type,
+                "documents.siteId": crawledSiteId.toString(),
+              },
               update: {
                 $set: {
                   "documents.$.termFrequency": wordOccurance[word],
