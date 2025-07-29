@@ -46,37 +46,10 @@ export const runUrlPendingQueue = async () => {
           eventEmitter.emit("hit-corpus-word-queue");
         }
 
-        globalState.invertedIndexQueue
-          .push({
-            inputData: data?.data?.textTokens,
-            crawledSiteId: data?.data?._id,
-            type: "BASIC_TOKEN",
-          })
-          .push({
-            inputData: data?.data?.textTokens,
-            crawledSiteId: data?.data?._id,
-            type: "PAGETITLE",
-          })
-          .push({
-            inputData: data?.data?.textTokens,
-            crawledSiteId: data?.data?._id,
-            type: "KEYWORD",
-          })
-          .push({
-            inputData: data?.data?.textTokens,
-            crawledSiteId: data?.data?._id,
-            type: "HONE",
-          })
-          .push({
-            inputData: data?.data?.textTokens,
-            crawledSiteId: data?.data?._id,
-            type: "HTWO",
-          })
-          .push({
-            inputData: data?.data?.textTokens,
-            crawledSiteId: data?.data?._id,
-            type: "HTHREE",
-          });
+        globalState.invertedIndexQueue.push({
+          inputData: data?.data?.textTokens,
+          crawledSiteId: data?.data?._id,
+        });
         if (!globalState.setRunInvertedIndexQueue) {
           eventEmitter.emit("hit-inverted-index-queue");
         }
@@ -104,11 +77,7 @@ export const runInvertedIndexQueue = async () => {
   try {
     while (!globalState.invertedIndexQueue.isEmpty()) {
       const front = globalState.invertedIndexQueue.pop();
-      await handleInvertedIndex(
-        front.inputData,
-        front.crawledSiteId,
-        front.type
-      );
+      await handleInvertedIndex(front.inputData, front.crawledSiteId);
     }
     globalState.setRunInvertedIndexQueue = false;
     temtTime.endingIndeQueueTime = Date.now();

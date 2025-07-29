@@ -263,7 +263,7 @@ export const handleCorpusWord = async (inputData, type) => {
   }
 };
 
-export const handleInvertedIndex = async (inputData, crawledSiteId, type) => {
+export const handleInvertedIndex = async (inputData, crawledSiteId) => {
   // console.time(`<<<<<<< Handle Inverted Index:`);
 
   try {
@@ -281,7 +281,6 @@ export const handleInvertedIndex = async (inputData, crawledSiteId, type) => {
 
     const entireWordList = await InvertedIndex.find({
       word: { $in: Object.keys(wordOccurance) },
-      wordType: type,
     })
       .select("_id word document.siteId")
       .lean();
@@ -299,7 +298,6 @@ export const handleInvertedIndex = async (inputData, crawledSiteId, type) => {
       if (!currentWord) {
         bulkCreateData.push({
           word: word,
-          wordType: type,
           documents: [newDocEntry],
         });
       }
@@ -312,7 +310,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId, type) => {
         if (!fCrawledSite) {
           bulkUpdateData.push({
             updateOne: {
-              filter: { word, wordType: type },
+              filter: { word },
               update: { $push: { documents: newDocEntry } },
             },
           });
@@ -320,11 +318,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId, type) => {
           // If same site crawled again, we'll update the numbers
           bulkUpdateData.push({
             updateOne: {
-              filter: {
-                word,
-                wordType: type,
-                "documents.siteId": crawledSiteId.toString(),
-              },
+              filter: { word, "documents.siteId": crawledSiteId.toString() },
               update: {
                 $set: {
                   "documents.$.termFrequency": wordOccurance[word],

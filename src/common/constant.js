@@ -84,3 +84,12 @@ export const tokenType = [
   "HTWO",
   "HTHREE",
 ];
+
+export const tokenTypeToMultipelier = {
+  BASIC_TOKEN: 1,
+  PAGETITLE: 10,
+  KEYWORD: 8,
+  HONE: 5,
+  HTWO: 2.5,
+  HTHREE: 1.5,
+};

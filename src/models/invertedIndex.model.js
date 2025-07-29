@@ -1,13 +1,10 @@
 import mongoose from "mongoose";
-import { tokenType } from "../common/constant.js";
 const invertedIndexSchema = new mongoose.Schema(
   {
     word: {
       type: String,
-    },
-    wordType: {
-      type: String,
-      enum: tokenType,
+      unique: true,
+      index: true,
     },
     documents: [
       {
@@ -28,8 +25,6 @@ const invertedIndexSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-invertedIndexSchema.index({ word: 1, wordType: 1 }, { unique: true });
 
 const InvertedIndex = mongoose.model("InvertedIndex", invertedIndexSchema);
 

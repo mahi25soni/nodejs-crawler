@@ -3,6 +3,7 @@ import natural from "natural";
 import CorpusWordStat from "../models/corpusWordStat.model.js";
 import InvertedIndex from "../models/invertedIndex.model.js";
 import CrawledSite from "../models/crawledSite.model.js";
+import { tokenTypeToMultipelier } from "../common/constant.js";
 
 const preprocessSearchQuery = (query) => {
   try {
@@ -35,16 +36,28 @@ export const searchSite = async (req, res) => {
     const allWordsScore = await Promise.all(
       stemmedQueryArray.map(async (word) => {
         try {
-          const corpusEntry = await CorpusWordStat.findOne({
+          const findAllTypes = await CorpusWordStat.find({
             word: { $regex: new RegExp(`^${word}$`, "i") },
           });
 
-          if (!corpusEntry || !corpusEntry.documentFrequency) {
-            console.warn(`⚠️ Word "${word}" not found in CorpusWordStat`);
-            return [];
-          }
+          const typesToDocumentCount = {};
+          findAllTypes.forEach((element) => {
+            if (typesToDocumentCount[element.wordType]) {
+              typesToDocumentCount[element.wordType] +=
+                element.documentFrequency;
+            } else {
+              typesToDocumentCount[element.wordType] =
+                element.documentFrequency;
+            }
+          });
 
-          const IDF = Math.log(totalDocuments / corpusEntry.documentFrequency);
+          let IDF = 0;
+
+          for (const [key, value] of Object.entries(typesToDocumentCount)) {
+            const tempIDF =
+              Math.log(totalDocuments / value) * tokenTypeToMultipelier[key];
+            IDF += tempIDF;
+          }
 
           const invertedIndexEntry = await InvertedIndex.findOne({
             word: { $regex: new RegExp(`^${word}$`, "i") },
