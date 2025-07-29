@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { fetchSiteData } from "../controllers/preprocessing.controller.js";
 import temtTime from "../libs/temtTime.js";
+import { searchSite } from "../controllers/search.controller.js";
 const mainRouter = Router();
 
 mainRouter.post("/fetch-site-data", fetchSiteData);
+mainRouter.post("/search", searchSite);
 mainRouter.get("/total-time", (req, res) => {
   const { apiStartTime, endingCorpusQueueTime, endingIndeQueueTime } = temtTime;
 

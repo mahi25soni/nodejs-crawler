@@ -53,9 +53,15 @@ const normliseIncomingUrl = (url) => {
 };
 export const fetchSiteData = async (req, res) => {
   try {
-    const normalizedSeedUrl = normliseIncomingUrl(req.body.seedUrl);
-    globalState.globalUrlPendingQueue.enqueue(normalizedSeedUrl);
-    2525;
+    if (req.body.seedUrls && req.body.seedUrls.length < 1) {
+      return res.status(400).json({
+        message: "Seed URLs are required",
+      });
+    }
+
+    req.body.seedUrls.forEach((url) =>
+      globalState.globalUrlPendingQueue.push(normliseIncomingUrl(url))
+    );
 
     temtTime.apiStartTime = Date.now();
     eventEmitter.emit("hit-url-pending-queue");
@@ -87,6 +93,7 @@ export const handleCrawledSite = async (seedUrl) => {
       };
     }
 
+    await new Promise((resolve) => setTimeout(resolve, 300));
     const response = await axios.get(normalizedSeedUrl);
 
     const rawHtmlData = response.data;
@@ -159,8 +166,10 @@ export const handleCrawledSite = async (seedUrl) => {
     const outboundLinks = Array.from(document.querySelectorAll("a"))
       .map((link) => link.getAttribute("href") || "")
       .filter((href) => href.startsWith("https")) // only absolute URLs
-      .map((href) => normalizeUrl(href))
-      .filter((href) => href && href.includes("geeksforgeeks.org"));
+      .filter((href) => href && href.includes("geeksforgeeks.org"))
+      .map((href) => {
+        return normalizeUrl(href);
+      });
 
     const newCrawledSiteData = {
       url: normalizedSeedUrl,
@@ -192,14 +201,20 @@ export const handleCrawledSite = async (seedUrl) => {
       data: nCrawledSite.toObject(),
     };
   } catch (error) {
-    console.log("Error in handleCrawled :", error);
-    throw new Error(error);
+    if (error.code === "ERR_BAD_REQUEST") {
+      // eventEmitter.emit("hit-url-pending-queue");
+      return {
+        success: true,
+      };
+    } else {
+      throw new Error(error);
+    }
   } finally {
     // console.timeEnd(`<<<<<< Process api:`);
   }
 };
 
-export const handleCorpusWord = async (inputData) => {
+export const handleCorpusWord = async (inputData, type) => {
   // console.time(`<<<<<<< Handle Corpus Word:`);
   try {
     const wordOccurance = Object.create(null);
@@ -216,6 +231,7 @@ export const handleCorpusWord = async (inputData) => {
 
     const entireWordList = await CorpusWordStat.find({
       word: { $in: Object.keys(wordOccurance) },
+      wordType: type,
     })
       .select("_id word")
       .lean();
@@ -238,6 +254,7 @@ export const handleCorpusWord = async (inputData) => {
       else {
         bulkCreateData.push({
           word: word,
+          wordType: type,
           documentFrequency: 1,
         });
       }
@@ -309,7 +326,7 @@ export const handleInvertedIndex = async (inputData, crawledSiteId) => {
           bulkUpdateData.push({
             updateOne: {
               filter: { word },
-              update: { $push: { document: newDocEntry } },
+              update: { $push: { documents: newDocEntry } },
             },
           });
         } else {

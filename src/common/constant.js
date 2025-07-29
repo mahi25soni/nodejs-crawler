@@ -75,3 +75,21 @@ export const webStopwords = [
   "zip",
   "code",
 ];
+
+export const tokenType = [
+  "BASIC_TOKEN",
+  "PAGETITLE",
+  "KEYWORD",
+  "HONE",
+  "HTWO",
+  "HTHREE",
+];
+
+export const tokenTypeToMultipelier = {
+  BASIC_TOKEN: 1,
+  PAGETITLE: 10,
+  KEYWORD: 8,
+  HONE: 5,
+  HTWO: 2.5,
+  HTHREE: 1.5,
+};

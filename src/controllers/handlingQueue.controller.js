@@ -11,15 +11,37 @@ export const runUrlPendingQueue = async () => {
   try {
     while (
       !globalState.globalUrlPendingQueue.isEmpty() &&
-      globalState.globalSiteCrawled <= 50
+      globalState.globalSiteCrawled <= 1000
     ) {
       const front = globalState.globalUrlPendingQueue.pop(); // removes the first element
 
       const data = await handleCrawledSite(front);
       if (data.success) {
-        globalState.corpusWordQueue.push({
-          inputData: data?.data?.textTokens,
-        });
+        globalState.corpusWordQueue
+          .push({
+            inputData: data?.data?.textTokens,
+            type: "BASIC_TOKEN",
+          })
+          .push({
+            inputData: data?.data?.pageTitle,
+            type: "PAGETITLE",
+          })
+          .push({
+            inputData: data?.data?.metaKeywords,
+            type: "KEYWORD",
+          })
+          .push({
+            inputData: data?.data?.htmlHeaders?.h1,
+            type: "HONE",
+          })
+          .push({
+            inputData: data?.data?.htmlHeaders?.h2,
+            type: "HTWO",
+          })
+          .push({
+            inputData: data?.data?.htmlHeaders?.h3,
+            type: "HTHREE",
+          });
         if (!globalState.setRunCorpusWordQueue) {
           eventEmitter.emit("hit-corpus-word-queue");
         }
@@ -42,7 +64,7 @@ export const runCorpusWordQueue = async () => {
   try {
     while (!globalState.corpusWordQueue.isEmpty()) {
       const front = globalState.corpusWordQueue.pop();
-      await handleCorpusWord(front.inputData);
+      await handleCorpusWord(front.inputData, front.type);
     }
     globalState.setRunCorpusWordQueue = false;
     temtTime.endingCorpusQueueTime = Date.now();
