@@ -53,9 +53,16 @@ const normliseIncomingUrl = (url) => {
 };
 export const fetchSiteData = async (req, res) => {
   try {
-    const normalizedSeedUrl = normliseIncomingUrl(req.body.seedUrl);
+    if (req.body.seedUrls && req.body.seedUrls.length < 1) {
+      return res.status(400).json({
+        message: "Seed URLs are required",
+      });
+    }
+
+    const normalizedSeedUrl = req.body.seedUrls.map((url) =>
+      normliseIncomingUrl(url)
+    );
     globalState.globalUrlPendingQueue.enqueue(normalizedSeedUrl);
-    2525;
 
     temtTime.apiStartTime = Date.now();
     eventEmitter.emit("hit-url-pending-queue");

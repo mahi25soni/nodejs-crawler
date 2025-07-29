@@ -104,18 +104,14 @@ export const searchSite = async (req, res) => {
 
     const sortedSiteScores = Object.entries(siteToScore)
       .sort((a, b) => b[1] - a[1])
-      .map(([siteId, score]) => ({ siteId, score }));
+      .map(([siteId, score]) => ({ siteId, score }))
+      .slice(0, 10);
 
-    const something = await Promise.all(
-      sortedSiteScores?.map(async (element) => {
-        const siteInfo = await CrawledSite.findOne({
-          _id: element?.siteId,
-        }).select("url");
-        return siteInfo;
-      })
-    );
+    const topTenInfo = await CrawledSite.find({
+      _id: { $in: sortedSiteScores.map((item) => item.siteId) },
+    }).select("_id url");
 
-    res.status(200).send(something);
+    res.status(200).send(topTenInfo);
   } catch (error) {
     res.status(500).send(error);
   }

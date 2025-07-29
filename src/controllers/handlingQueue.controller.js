@@ -9,10 +9,7 @@ import temtTime from "../libs/temtTime.js";
 
 export const runUrlPendingQueue = async () => {
   try {
-    while (
-      !globalState.globalUrlPendingQueue.isEmpty() &&
-      globalState.globalSiteCrawled <= 50
-    ) {
+    while (!globalState.globalUrlPendingQueue.isEmpty()) {
       const front = globalState.globalUrlPendingQueue.pop(); // removes the first element
 
       const data = await handleCrawledSite(front);
