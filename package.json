@@ -15,6 +15,7 @@
     "@datastructures-js/queue": "^4.2.3",
     "axios": "^1.10.0",
     "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
     "express": "^5.1.0",
     "gitignore": "^0.7.0",
     "jsdom": "^26.1.0",
