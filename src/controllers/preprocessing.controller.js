@@ -59,10 +59,9 @@ export const fetchSiteData = async (req, res) => {
       });
     }
 
-    const normalizedSeedUrl = req.body.seedUrls.map((url) =>
-      normliseIncomingUrl(url)
+    req.body.seedUrls.forEach((url) =>
+      globalState.globalUrlPendingQueue.push(normliseIncomingUrl(url))
     );
-    globalState.globalUrlPendingQueue.enqueue(normalizedSeedUrl);
 
     temtTime.apiStartTime = Date.now();
     eventEmitter.emit("hit-url-pending-queue");
@@ -94,6 +93,7 @@ export const handleCrawledSite = async (seedUrl) => {
       };
     }
 
+    await new Promise((resolve) => setTimeout(resolve, 300));
     const response = await axios.get(normalizedSeedUrl);
 
     const rawHtmlData = response.data;
@@ -166,8 +166,10 @@ export const handleCrawledSite = async (seedUrl) => {
     const outboundLinks = Array.from(document.querySelectorAll("a"))
       .map((link) => link.getAttribute("href") || "")
       .filter((href) => href.startsWith("https")) // only absolute URLs
-      .map((href) => normalizeUrl(href))
-      .filter((href) => href && href.includes("geeksforgeeks.org"));
+      .filter((href) => href && href.includes("geeksforgeeks.org"))
+      .map((href) => {
+        return normalizeUrl(href);
+      });
 
     const newCrawledSiteData = {
       url: normalizedSeedUrl,
@@ -199,8 +201,14 @@ export const handleCrawledSite = async (seedUrl) => {
       data: nCrawledSite.toObject(),
     };
   } catch (error) {
-    console.log("Error in handleCrawled :", error);
-    throw new Error(error);
+    if (error.code === "ERR_BAD_REQUEST") {
+      // eventEmitter.emit("hit-url-pending-queue");
+      return {
+        success: true,
+      };
+    } else {
+      throw new Error(error);
+    }
   } finally {
     // console.timeEnd(`<<<<<< Process api:`);
   }
